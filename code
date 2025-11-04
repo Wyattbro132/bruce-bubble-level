@@ -1,0 +1,103 @@
+"use strict";
+
+// Import built-in modules
+var display = require('display');
+var imu = require('imu');
+var keyboard = require('keyboard');
+
+// --- Config ---
+var screenWidth = 240;
+var screenHeight = 135;
+var centerX = screenWidth / 2;
+var centerY = screenHeight / 2;
+
+// Bubble properties
+var bubbleRadius = 20;
+var bubbleColor = { r: 0, g: 200, b: 255 }; // A nice cyan
+var eyeRadius = 3;
+var eyeColor = { r: 0, g: 0, b: 0 }; // Black
+
+// Physics properties
+var smoothing = 0.1; // How much lag? (0.1 = very slidy, 1.0 = instant)
+var bubbleX = centerX;
+var bubbleY = centerY;
+var lastX = centerX;
+var lastY = centerY;
+
+// --- Helper Functions ---
+
+// Draws the crosshair target
+function drawTarget() {
+  var gray = { r: 80, g: 80, b: 80 };
+  display.drawLine(centerX, 0, centerX, screenHeight, gray.r, gray.g, gray.b);
+  display.drawLine(0, centerY, screenWidth, centerY, gray.r, gray.g, gray.b);
+}
+
+// Draws the bubble's face
+function drawBubbleFace(x, y, speed) {
+  // Eyes
+  var eyeOffsetX = 7;
+  var eyeOffsetY = -4;
+  display.fillCircle(x - eyeOffsetX, y + eyeOffsetY, eyeRadius, eyeColor.r, eyeColor.g, eyeColor.b);
+  display.fillCircle(x + eyeOffsetX, y + eyeOffsetY, eyeRadius, eyeColor.r, eyeColor.g, eyeColor.b);
+
+  // --- Fun Mouth ---
+  // It wobbles based on how fast the bubble is "moving"
+  var mouthY = y + 7;
+  var mouthWobble = speed * 2; // Make wobble bigger than speed
+  
+  // Clamp wobble to a max of 5 pixels
+  if (mouthWobble > 5) {
+    mouthWobble = 5;
+  }
+  
+  display.drawLine(x - 5, mouthY - mouthWobble, x, mouthY + mouthWobble, eyeColor.r, eyeColor.g, eyeColor.b);
+  display.drawLine(x, mouthY + mouthWobble, x + 5, mouthY - mouthWobble, eyeColor.r, eyeColor.g, eyeColor.b);
+}
+
+// Main function
+function main() {
+  while (true) {
+    // 1. Get Sensor Data
+    var accel = imu.getAccel(); // Returns {x, y, z}
+
+    // 2. Calculate Target Position (where the bubble *should* go)
+    // We map the accel value (-1.0 to 1.0) to the screen
+    var targetX = centerX + (accel.x * (centerX - bubbleRadius));
+    var targetY = centerY - (accel.y * (centerY - bubbleRadius)); // Y is inverted
+
+    // 3. Apply Easing (The "Fun" Physics)
+    // The bubble slides towards the target instead of teleporting
+    bubbleX = bubbleX + (targetX - bubbleX) * smoothing;
+    bubbleY = bubbleY + (targetY - bubbleY) * smoothing;
+    
+    // Calculate the "speed" of the bubble for the mouth wobble
+    // (We use 'abs' for absolute value)
+    var speed = Math.abs(bubbleX - lastX) + Math.abs(bubbleY - lastY);
+    
+    // 4. Draw Everything
+    display.fill(0, 0, 0); // Clear screen
+    drawTarget();
+
+    // Draw bubble body
+    display.fillCircle(bubbleX, bubbleY, bubbleRadius, bubbleColor.r, bubbleColor.g, bubbleColor.b);
+    
+    // Draw bubble face
+    drawBubbleFace(bubbleX, bubbleY, speed);
+
+    // 5. Store the current position for the next loop's speed calculation
+    lastX = bubbleX;
+    lastY = bubbleY;
+
+    // 6. Check for exit
+    if (keyboard.getEsc()) {
+      break;
+    }
+
+    // 7. Wait
+    delay(20); // A short delay for smooth animation
+  }
+}
+
+// Run the program
+main();
