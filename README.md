@@ -1,2 +1,3 @@
 # bruce-bubble-level
-a level feature witth a fun buble animation
+for m5stack stick plus2 
+a level feature with a fun bubble animation
